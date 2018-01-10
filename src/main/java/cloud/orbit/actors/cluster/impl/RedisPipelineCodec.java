@@ -79,15 +79,21 @@ public class RedisPipelineCodec implements Codec
 
     private final Encoder encoder = new Encoder() {
         @Override
-        public byte[] encode(Object in) throws IOException {
-            byte[] conversionBytes = innerCodec.getValueEncoder().encode(in);
+        public ByteBuf encode(Object in) throws IOException {
+            ByteBuf buf = innerCodec.getValueEncoder().encode(in);
+
+            final int rawLength = buf.readableBytes();
+            final byte[] rawBytes = new byte[rawLength];
+            buf.readBytes(rawBytes);
+
+            byte[] conversionBytes = rawBytes;
 
             for (final RedisPipelineStep pipelineStep : pipelineSteps)
             {
                 conversionBytes = pipelineStep.write(conversionBytes);
             }
 
-            return conversionBytes;
+            return Unpooled.wrappedBuffer(conversionBytes);
         }
     };
 
